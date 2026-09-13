@@ -1,0 +1,1423 @@
+{
+  "info": {
+    "name": "SupplyNext API",
+    "description": "Full API collection for SupplyNext \u2014 a multi-warehouse smart supply chain management system.\n\n## Getting started\n1. Select the **SupplyNext - Local** environment (top-right).\n2. Run **1. Auth > Register (ADMIN)** once.\n3. Run **1. Auth > Login** \u2014 the token is saved automatically and every other request picks it up.\n4. Work top to bottom: warehouses and categories first, then suppliers, products, inventory, and finally orders.\n\n## Notes\n- Every list endpoint is paginated (`?page=0&size=10`).\n- Analytics only counts **SHIPPED** sales orders as demand, so ship a few orders before expecting meaningful numbers.\n- Folder 12 targets the Python ML service on `{{mlUrl}}`, not the backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "mlUrl",
+      "value": "http://localhost:8000"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Run **Login** first \u2014 its test script stores the JWT in the `token` environment variable, which every other request uses.",
+      "item": [
+        {
+          "name": "Register (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a user. Password is BCrypt-hashed; the response never includes it. Role defaults to STAFF when omitted.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\",\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register (STAFF)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "A STAFF user, useful for checking that role restrictions really bite.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"staff\",\n  \"password\": \"staff123\",\n  \"role\": \"STAFF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns {token, role} and saves the token automatically.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves the JWT into the environment so every other request in this",
+                  "// collection authenticates automatically. Run this request first.",
+                  "const body = pm.response.json();",
+                  "if (body.token) {",
+                  "    pm.environment.set('token', body.token);",
+                  "    pm.environment.set('role', body.role);",
+                  "    console.log('Token saved. Role: ' + body.role);",
+                  "}",
+                  "",
+                  "pm.test('login succeeded', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('a token came back', function () {",
+                  "    pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Warehouses",
+      "item": [
+        {
+          "name": "List warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouses?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "warehouses"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Paginated. Every list endpoint takes ?page and ?size."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', function () { pm.response.to.be.success; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create warehouse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/warehouses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "warehouses"
+              ]
+            },
+            "description": "Requires ADMIN or WAREHOUSE_MANAGER. A STAFF token gets 403.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dhaka Central\",\n  \"location\": \"Dhaka\",\n  \"capacity\": 5000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Categories",
+      "item": [
+        {
+          "name": "List categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Fasteners\",\n  \"description\": \"Bolts, nuts, screws\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Suppliers",
+      "item": [
+        {
+          "name": "List suppliers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/suppliers?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "suppliers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create supplier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/suppliers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "suppliers"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Supplies\",\n  \"contactPerson\": \"Rahim Uddin\",\n  \"phone\": \"+8801700000000\",\n  \"email\": \"sales@acme.example\",\n  \"address\": \"Gulshan, Dhaka\",\n  \"leadTimeDays\": 7\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update supplier (lead time)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/suppliers/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "suppliers",
+                "1"
+              ]
+            },
+            "description": "Backfills leadTimeDays, which safety stock and reorder point both need.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leadTimeDays\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Products",
+      "item": [
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"BOLT-M8\",\n  \"name\": \"Steel Bolt M8\",\n  \"description\": \"8mm steel bolt\",\n  \"price\": 12.5,\n  \"unitCost\": 7.25,\n  \"holdingCostRate\": 0.2,\n  \"orderingCost\": 150.0,\n  \"categoryId\": 1,\n  \"supplierId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update product (EOQ cost inputs)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "1"
+              ]
+            },
+            "description": "EOQ returns 'missing cost data' until unitCost, holdingCostRate and orderingCost are all set.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitCost\": 7.25,\n  \"holdingCostRate\": 0.2,\n  \"orderingCost\": 150.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Inventory",
+      "item": [
+        {
+          "name": "List inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create inventory record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 1,\n  \"warehouseId\": 1,\n  \"quantity\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Adjust stock (+25)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/1/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "1",
+                "adjust"
+              ]
+            },
+            "description": "Relative change, not an absolute value. Rejected if it would push stock below 0.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"change\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Adjust stock (reject negative)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/1/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "1",
+                "adjust"
+              ]
+            },
+            "description": "Should return 400 with a clean JSON error \u2014 proves the guard works.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"change\": -999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Purchase Orders",
+      "item": [
+        {
+          "name": "List purchase orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/purchase-orders?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "purchase-orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create purchase order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "purchase-orders"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": 1,\n  \"warehouseId\": 1,\n  \"orderDate\": \"2026-09-01\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 50\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Receive purchase order",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/purchase-orders/1/receive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "purchase-orders",
+                "1",
+                "receive"
+              ]
+            },
+            "description": "Increases inventory (creating the record if needed), stamps receivedDate, and flips status to RECEIVED. Rejected if already received."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Sales Orders",
+      "item": [
+        {
+          "name": "List sales orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sales-orders?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sales-orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create sales order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sales-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sales-orders"
+              ]
+            },
+            "description": "STAFF may create sales orders (unlike purchase orders).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Karim Traders\",\n  \"warehouseId\": 1,\n  \"orderDate\": \"2026-09-05\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 10\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ship sales order",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sales-orders/1/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sales-orders",
+                "1",
+                "ship"
+              ]
+            },
+            "description": "Two-pass: validates stock for ALL items first, then reduces. Prevents a partial-failure state. Only SHIPPED orders count as demand in analytics."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Transfers",
+      "item": [
+        {
+          "name": "List transfers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Create transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWarehouseId\": 1,\n  \"toWarehouseId\": 2,\n  \"transferDate\": \"2026-09-06\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create transfer (same warehouse - should fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "Expect 400: the @AssertTrue validator on the DTO rejects identical warehouses. The frontend blocks this too, but the backend is the real boundary.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWarehouseId\": 1,\n  \"toWarehouseId\": 1,\n  \"transferDate\": \"2026-09-06\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 5\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Complete transfer",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers/1/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers",
+                "1",
+                "complete"
+              ]
+            },
+            "description": "Decreases source stock and increases destination stock in one operation."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Dashboard",
+      "item": [
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "summary"
+              ]
+            },
+            "description": "Aggregate KPIs: inventory value, stock units, low-stock items, pending POs/SOs/transfers, dead stock count, average supplier on-time rate."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. Analytics (Phase B)",
+      "description": "Smart analytics. EOQ and ABC need product cost fields; safety stock and reorder point need the supplier's leadTimeDays.",
+      "item": [
+        {
+          "name": "EOQ (all products)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/eoq",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "eoq"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "EOQ (one product)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/eoq/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "eoq",
+                "1"
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "ABC analysis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "abc"
+              ]
+            },
+            "description": "A = top 80% of annual value, B = next 15%, C = the rest."
+          },
+          "response": []
+        },
+        {
+          "name": "Safety stock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/safety-stock?serviceLevel=0.95",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "safety-stock"
+              ],
+              "query": [
+                {
+                  "key": "serviceLevel",
+                  "value": "0.95"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Safety stock (one product)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/safety-stock/1?serviceLevel=0.95",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "safety-stock",
+                "1"
+              ],
+              "query": [
+                {
+                  "key": "serviceLevel",
+                  "value": "0.95"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Reorder point",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/reorder-point?serviceLevel=0.95",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "reorder-point"
+              ],
+              "query": [
+                {
+                  "key": "serviceLevel",
+                  "value": "0.95"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Reorder point (one product)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/reorder-point/1?serviceLevel=0.95",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "reorder-point",
+                "1"
+              ],
+              "query": [
+                {
+                  "key": "serviceLevel",
+                  "value": "0.95"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Dead stock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/dead-stock?thresholdDays=90",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "dead-stock"
+              ],
+              "query": [
+                {
+                  "key": "thresholdDays",
+                  "value": "90"
+                }
+              ]
+            },
+            "description": "Products with stock but no movement in N days. Zero-stock products are excluded rather than flagged."
+          },
+          "response": []
+        },
+        {
+          "name": "Supplier performance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/supplier-performance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "supplier-performance"
+              ]
+            },
+            "description": "Average actual lead time and on-time delivery rate, from RECEIVED POs only."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12. ML Service (Phase C)",
+      "description": "Runs on {{mlUrl}} (default http://localhost:8000), NOT on the Spring backend. These endpoints have no authentication \u2014 see ml-service/README.md.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mlUrl}}/health",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forecast demand (stateless)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/api/forecast/demand",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "api",
+                "forecast",
+                "demand"
+              ]
+            },
+            "description": "Backtests every model and uses the best. The sample data has a weekend spike, so holt_winters should win. Check `model_comparison` in the response.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observations\": [\n    {\n      \"observed_on\": \"2026-06-01\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-02\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-03\",\n      \"quantity\": 7\n    },\n    {\n      \"observed_on\": \"2026-06-04\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-05\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-06\",\n      \"quantity\": 24\n    },\n    {\n      \"observed_on\": \"2026-06-07\",\n      \"quantity\": 26\n    },\n    {\n      \"observed_on\": \"2026-06-08\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-09\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-10\",\n      \"quantity\": 11\n    },\n    {\n      \"observed_on\": \"2026-06-11\",\n      \"quantity\": 7\n    },\n    {\n      \"observed_on\": \"2026-06-12\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-13\",\n      \"quantity\": 25\n    },\n    {\n      \"observed_on\": \"2026-06-14\",\n      \"quantity\": 27\n    },\n    {\n      \"observed_on\": \"2026-06-15\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-16\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-17\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-18\",\n      \"quantity\": 12\n    },\n    {\n      \"observed_on\": \"2026-06-19\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-20\",\n      \"quantity\": 26\n    },\n    {\n      \"observed_on\": \"2026-06-21\",\n      \"quantity\": 28\n    },\n    {\n      \"observed_on\": \"2026-06-22\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-23\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-24\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-25\",\n      \"quantity\": 11\n    },\n    {\n      \"observed_on\": \"2026-06-26\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-27\",\n      \"quantity\": 27\n    },\n    {\n      \"observed_on\": \"2026-06-28\",\n      \"quantity\": 29\n    }\n  ],\n  \"horizon_days\": 30,\n  \"model\": \"auto\",\n  \"product_id\": 1,\n  \"product_name\": \"Steel Bolt M8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forecast demand (force a model)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/api/forecast/demand",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "api",
+                "forecast",
+                "demand"
+              ]
+            },
+            "description": "Naming a model skips auto-selection. Compare its numbers against auto.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observations\": [\n    {\n      \"observed_on\": \"2026-06-01\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-02\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-03\",\n      \"quantity\": 7\n    },\n    {\n      \"observed_on\": \"2026-06-04\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-05\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-06\",\n      \"quantity\": 24\n    },\n    {\n      \"observed_on\": \"2026-06-07\",\n      \"quantity\": 26\n    },\n    {\n      \"observed_on\": \"2026-06-08\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-09\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-10\",\n      \"quantity\": 11\n    },\n    {\n      \"observed_on\": \"2026-06-11\",\n      \"quantity\": 7\n    },\n    {\n      \"observed_on\": \"2026-06-12\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-13\",\n      \"quantity\": 25\n    },\n    {\n      \"observed_on\": \"2026-06-14\",\n      \"quantity\": 27\n    },\n    {\n      \"observed_on\": \"2026-06-15\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-16\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-17\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-18\",\n      \"quantity\": 12\n    },\n    {\n      \"observed_on\": \"2026-06-19\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-20\",\n      \"quantity\": 26\n    },\n    {\n      \"observed_on\": \"2026-06-21\",\n      \"quantity\": 28\n    },\n    {\n      \"observed_on\": \"2026-06-22\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-23\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-24\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-25\",\n      \"quantity\": 11\n    },\n    {\n      \"observed_on\": \"2026-06-26\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-27\",\n      \"quantity\": 27\n    },\n    {\n      \"observed_on\": \"2026-06-28\",\n      \"quantity\": 29\n    }\n  ],\n  \"horizon_days\": 14,\n  \"model\": \"naive\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reorder plan (stateless)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/api/forecast/reorder-plan",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "api",
+                "forecast",
+                "reorder-plan"
+              ]
+            },
+            "description": "Forecast plus the buy/don't-buy decision, projected stockout date and recommended order quantity.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observations\": [\n    {\n      \"observed_on\": \"2026-06-01\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-02\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-03\",\n      \"quantity\": 7\n    },\n    {\n      \"observed_on\": \"2026-06-04\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-05\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-06\",\n      \"quantity\": 24\n    },\n    {\n      \"observed_on\": \"2026-06-07\",\n      \"quantity\": 26\n    },\n    {\n      \"observed_on\": \"2026-06-08\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-09\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-10\",\n      \"quantity\": 11\n    },\n    {\n      \"observed_on\": \"2026-06-11\",\n      \"quantity\": 7\n    },\n    {\n      \"observed_on\": \"2026-06-12\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-13\",\n      \"quantity\": 25\n    },\n    {\n      \"observed_on\": \"2026-06-14\",\n      \"quantity\": 27\n    },\n    {\n      \"observed_on\": \"2026-06-15\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-16\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-17\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-18\",\n      \"quantity\": 12\n    },\n    {\n      \"observed_on\": \"2026-06-19\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-20\",\n      \"quantity\": 26\n    },\n    {\n      \"observed_on\": \"2026-06-21\",\n      \"quantity\": 28\n    },\n    {\n      \"observed_on\": \"2026-06-22\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-23\",\n      \"quantity\": 10\n    },\n    {\n      \"observed_on\": \"2026-06-24\",\n      \"quantity\": 8\n    },\n    {\n      \"observed_on\": \"2026-06-25\",\n      \"quantity\": 11\n    },\n    {\n      \"observed_on\": \"2026-06-26\",\n      \"quantity\": 9\n    },\n    {\n      \"observed_on\": \"2026-06-27\",\n      \"quantity\": 27\n    },\n    {\n      \"observed_on\": \"2026-06-28\",\n      \"quantity\": 29\n    }\n  ],\n  \"horizon_days\": 30,\n  \"current_stock\": 120,\n  \"lead_time_days\": 10,\n  \"service_level\": 0.95,\n  \"product_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forecast one product (needs DATABASE_URL)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mlUrl}}/api/forecast/product/1?horizon_days=30",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "api",
+                "forecast",
+                "product",
+                "1"
+              ],
+              "query": [
+                {
+                  "key": "horizon_days",
+                  "value": "30"
+                }
+              ]
+            },
+            "description": "Returns 503 unless DATABASE_URL is set on the ML service.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Forecast all products (needs DATABASE_URL)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mlUrl}}/api/forecast/products?horizon_days=30",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "api",
+                "forecast",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "horizon_days",
+                  "value": "30"
+                }
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reorder plan for product (needs DATABASE_URL)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mlUrl}}/api/forecast/reorder-plan/1?horizon_days=30",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "api",
+                "forecast",
+                "reorder-plan",
+                "1"
+              ],
+              "query": [
+                {
+                  "key": "horizon_days",
+                  "value": "30"
+                }
+              ]
+            },
+            "description": "Lead time comes from the product's supplier unless overridden.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+# Backend
+backend/target/
+backend/.idea/
+backend/*.iml
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.env*.local
+
+# ML service
+ml-service/__pycache__/
+ml-service/**/__pycache__/
+ml-service/*.py[cod]
+ml-service/.venv/
+ml-service/venv/
+ml-service/.pytest_cache/
+
+# Environment files — never commit real secrets (.env.example IS committed)
+.env
+*.env
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# General
+.DS_Store
+*.log

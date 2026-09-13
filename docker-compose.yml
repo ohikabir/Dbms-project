@@ -1,0 +1,93 @@
+# SupplyNext — full stack in one command.
+#
+#   docker compose up --build
+#
+#   Frontend    http://localhost:3000
+#   Backend     http://localhost:8080  (Swagger: /swagger-ui.html)
+#   ML service  http://localhost:8000  (Swagger: /docs)
+#   PostgreSQL  localhost:5432
+#
+# Stop and keep data:     docker compose down
+# Stop and wipe the DB:   docker compose down -v
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: supplynext-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-scm_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-1234}
+    ports:
+      # Exposed so pgAdmin on the host can still connect. Remove this mapping
+      # if you only ever reach the database from inside Compose.
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # The other services wait on this. Without it they start while Postgres
+      # is still initialising and crash on their first connection attempt.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-scm_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [supplynext]
+
+  backend:
+    build:
+      context: ./backend
+    container_name: supplynext-backend
+    environment:
+      # Inside Compose, "db" is the hostname — not localhost. localhost in a
+      # container means the container itself.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-scm_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-1234}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [supplynext]
+
+  ml-service:
+    build:
+      context: ./ml-service
+    container_name: supplynext-ml
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-1234}@db:5432/${POSTGRES_DB:-scm_db}
+      DEMAND_ORDER_STATUS: SHIPPED
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      # Convenient for trying the Swagger UI at http://localhost:8000/docs.
+      # The service has NO authentication (see ml-service/README.md) — drop
+      # this mapping for any real deployment so only Compose-internal services
+      # can reach it.
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [supplynext]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # This URL is baked into the browser bundle at build time, so it must
+        # be reachable from the USER'S BROWSER — "http://backend:8080" would
+        # only work from inside the Compose network, not from the browser.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+    container_name: supplynext-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks: [supplynext]
+
+volumes:
+  postgres_data:
+
+networks:
+  supplynext:
+    driver: bridge

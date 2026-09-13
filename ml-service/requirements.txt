@@ -1,0 +1,21 @@
+# SupplyNext ML service dependencies.
+# Versions are pinned with >= so a fresh install picks up patches, but the
+# lower bounds are the versions this service was actually developed against.
+
+fastapi>=0.141.1
+uvicorn[standard]>=0.52.4
+pydantic>=2.13.5
+pydantic-settings>=2.15.0
+
+# Forecasting stack
+numpy>=2.4.6
+pandas>=3.0.5
+statsmodels>=0.15.0
+
+# Optional read-only database access (see app/database.py)
+SQLAlchemy>=2.0.52
+psycopg2-binary>=2.9.13
+
+# Testing
+pytest>=9.1.1
+httpx>=0.28.1
