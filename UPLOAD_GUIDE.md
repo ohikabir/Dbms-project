@@ -39,16 +39,16 @@ folder at a time**, committing between each.
 | `app/database.py` | Optional SQLAlchemy engine |
 | `app/schemas.py` | Pydantic request/response models |
 | `app/config.py` | Environment-driven settings |
-| `app/__init__.py` | *(empty — makes `app` a package, still required)* |
+| `app/__init__.py` | *(one-line docstring — makes `app` a package)* |
 | `tests/test_forecasting.py` | 21 tests |
 | `tests/test_planning.py` | 11 tests |
 | `tests/test_api.py` | 14 tests |
-| `tests/__init__.py` | *(empty, required)* |
+| `tests/__init__.py` | *(one-line docstring, required)* |
 | `requirements.txt`, `pytest.ini`, `Dockerfile`, `.dockerignore`, `.gitignore`, `.env.example`, `README.md` | |
 
-> The two `__init__.py` files are empty on purpose. GitHub's uploader can skip
-> empty files — if `import app` fails later, that's why. Create them through
-> **Add file → Create new file** with a single space in them if needed.
+> Both `__init__.py` files contain a one-line docstring rather than being
+> empty. That is deliberate: GitHub's uploader silently skips zero-byte files,
+> and without these two `import app` fails. Make sure they arrive.
 
 ### `postman/` — the collection you'd been meaning to build
 
